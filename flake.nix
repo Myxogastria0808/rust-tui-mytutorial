@@ -1,24 +1,39 @@
 {
-  description = "r flake sample";
+  description = "rust-cli-mytutorial";
+
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    rust-overlay.url = "github:oxalica/rust-overlay";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
   outputs =
-    inputs:
-    inputs.flake-utils.lib.eachDefaultSystem (
+    {
+      nixpkgs,
+      rust-overlay,
+      flake-utils,
+      ...
+    }:
+    flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = inputs.nixpkgs.legacyPackages.${system};
-        rpkgs = with inputs.nixpkgs.legacyPackages.${system}.rPackages; [
-            rPackages.cli
-        ];
+        overlays = [ (import rust-overlay) ];
+        pkgs = import nixpkgs {
+          inherit system overlays;
+        };
       in
       {
-        devShells.default = pkgs.mkShell {
-          packages = with pkgs; [ R ] ++ rpkgs;
-        };
+        devShells.default =
+          with pkgs;
+          mkShell {
+            buildInputs = [
+              openssl
+              pkg-config
+              bacon
+              (rust-bin.stable.latest.default.override { extensions = [ "rust-src" ]; })
+            ];
+            RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
+          };
       }
     );
 }
